@@ -1,0 +1,50 @@
+:root {
+  --bg: #F2E6D4;
+  --bg-dark: #E8D5BF;
+  --card: #FBF5EC;
+  --text: #2C1810;
+  --muted: #7A6252;
+  --burgundy: #6B1525;
+  --gold: #C8A96E;
+  --sepia: #A0785A;
+  --border: #D4B896;
+  --border-light: #E4D4BF;
+  --green: #4A7A4A;
+  --red: #9B2C2C;
+  --white: #FFF;
+  --shadow: rgba(44, 24, 16, 0.12);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes flash {
+  0% { background: rgba(200, 169, 110, 0.25); }
+  100% { background: transparent; }
+}
+
+@keyframes toastAnim {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  8% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+@keyframes roundReveal {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.fi { animation: fadeIn 0.3s ease-out; }
+.pi { animation: popIn 0.25s ease-out; }
+.fl { animation: flash 0.8s ease-out; }
+.toast { animation: toastAnim 2.2s ease-out forwards; }
+.rr { animation: roundReveal 0.6s ease-out; }
