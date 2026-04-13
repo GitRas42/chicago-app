@@ -46,6 +46,7 @@ export default {
   finalScores: "Final scores",
   roundByRound: "Round by round",
   editScore: "Edit score",
+  editName: "Edit name",
   save: "Save",
   cancel: "Cancel",
   selectPlayer: "Select player",

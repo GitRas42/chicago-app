@@ -46,6 +46,7 @@ export default {
   finalScores: "Slutpoäng",
   roundByRound: "Giv för giv",
   editScore: "Ändra poäng",
+  editName: "Ändra namn",
   save: "Spara",
   cancel: "Avbryt",
   selectPlayer: "Välj spelare",

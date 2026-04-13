@@ -23,15 +23,16 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!user || !profile) {
+      navigate('/login');
+    }
+  }, [user, profile, navigate]);
+
+  useEffect(() => {
     if (!user) return;
     getClaimableNames(user.id).then(setClaimable);
     getClaimHistory(user.id).then(setClaimHistory);
   }, [user]);
-
-  if (!user || !profile) {
-    navigate('/login');
-    return null;
-  }
 
   const handleUpdateName = async () => {
     if (!newName.trim()) return;
@@ -42,6 +43,7 @@ export default function Profile() {
       setEditing(false);
     } catch {
       fire(t("errorOccurred"));
+      setEditing(false);
     } finally {
       setSaving(false);
     }
@@ -60,8 +62,11 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+    } finally {
+      navigate('/login');
+    }
   };
 
   const inputStyle = {
@@ -83,7 +88,7 @@ export default function Profile() {
               onClick={() => { setEditing(true); setNewName(profile.display_name); }}
               style={{ background: 'none', border: 'none', color: 'var(--burgundy)', fontSize: 14, fontWeight: 600 }}
             >
-              {t("editScore")}
+              {t("editName")}
             </button>
           </div>
           <p style={{ fontSize: 14, color: 'var(--muted)' }}>{user.email}</p>
