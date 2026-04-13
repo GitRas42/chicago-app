@@ -1,0 +1,34 @@
+{
+  "app": {
+    "title": "Chicago"
+  },
+  "auth": {
+    "login": "Logga in",
+    "signup": "Skapa konto",
+    "logout": "Logga ut",
+    "email": "E-post",
+    "password": "Lösenord",
+    "noAccount": "Inget konto?",
+    "hasAccount": "Har du redan ett konto?"
+  },
+  "nav": {
+    "lobby": "Lobby",
+    "leaderboard": "Topplista"
+  },
+  "game": {
+    "chicago": "Chicago",
+    "newGame": "Nytt spel",
+    "endGame": "Avsluta spel",
+    "round": "Runda",
+    "score": "Poäng",
+    "buy": "Köp",
+    "pass": "Passa",
+    "declare": "Deklarera Chicago",
+    "undo": "Ångra"
+  },
+  "rules": {
+    "kopstopp": "Köpstopp",
+    "chicago": "Chicago",
+    "royalStraightFlush": "Royal Straight Flush — omedelbar vinst"
+  }
+}

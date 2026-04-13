@@ -1,0 +1,63 @@
+/*
+ * Chicago — Saloon Design System
+ *
+ * All design tokens for the warm saloon aesthetic live here.
+ * Tailwind v4 @theme makes every token available as a utility class:
+ *   bg-burgundy, text-gold, border-wood, font-display, etc.
+ *
+ * Import this file from index.css (after @import "tailwindcss").
+ */
+
+@theme {
+  /* ── Colour palette ─────────────────────────────────────────── */
+  --color-beige:            #f5efe0;
+  --color-beige-dark:       #e8dcc8;
+
+  --color-burgundy:         #7b1e2e;
+  --color-burgundy-light:   #9c2d3f;
+  --color-burgundy-dark:    #5a1520;
+
+  --color-gold:             #c9972c;
+  --color-gold-light:       #e0b84d;
+  --color-gold-dark:        #a57820;
+
+  --color-wood:             #2c1a0e;
+  --color-wood-mid:         #4a2c18;
+  --color-wood-light:       #7a4a2a;
+
+  --color-felt:             #1a4d2e;
+  --color-felt-light:       #2d7a4a;
+
+  --color-cream:            #fff9f0;
+  --color-ink:              #1a0f08;
+
+  /* ── Semantic aliases ────────────────────────────────────────── */
+  --color-primary:          #7b1e2e;   /* burgundy */
+  --color-primary-hover:    #9c2d3f;
+  --color-primary-active:   #5a1520;
+
+  --color-accent:           #c9972c;   /* gold */
+  --color-accent-hover:     #e0b84d;
+
+  --color-bg:               #f5efe0;   /* beige page background */
+  --color-surface:          #fff9f0;   /* card / panel background */
+  --color-border:           #d4c4a8;
+
+  --color-text:             #1a0f08;
+  --color-text-muted:       #7a6a58;
+
+  /* ── Typography ─────────────────────────────────────────────── */
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body:    system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    ui-monospace, Consolas, monospace;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-card:   0 2px 8px  rgba(44, 26, 14, 0.15);
+  --shadow-raised: 0 4px 16px rgba(44, 26, 14, 0.25);
+  --shadow-inset:  inset 0 2px 4px rgba(44, 26, 14, 0.12);
+
+  /* ── Border radius ───────────────────────────────────────────── */
+  --radius-sm:   0.25rem;
+  --radius-card: 0.5rem;
+  --radius-lg:   0.75rem;
+}
