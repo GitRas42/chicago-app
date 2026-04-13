@@ -29,6 +29,35 @@ function LangButton() {
   );
 }
 
+function ReloadButton() {
+  const handleReload = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        Promise.all(regs.map((r) => r.unregister())).then(() => window.location.reload());
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+  return (
+    <button
+      onClick={handleReload}
+      title="Reload app"
+      style={{
+        background: 'transparent',
+        border: '1px solid rgba(200,169,110,0.4)',
+        borderRadius: 20,
+        padding: '6px 12px',
+        fontSize: 15,
+        color: 'var(--gold)',
+        lineHeight: 1,
+      }}
+    >
+      ↺
+    </button>
+  );
+}
+
 export default function Menu() {
   const { t } = useTranslation();
   const { active } = useAppState();
@@ -234,6 +263,7 @@ export default function Menu() {
           )
         )}
         <LangButton />
+        <ReloadButton />
       </div>
     </div>
   );
