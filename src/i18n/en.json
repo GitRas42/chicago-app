@@ -1,0 +1,34 @@
+{
+  "app": {
+    "title": "Chicago"
+  },
+  "auth": {
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "noAccount": "No account?",
+    "hasAccount": "Already have an account?"
+  },
+  "nav": {
+    "lobby": "Lobby",
+    "leaderboard": "Leaderboard"
+  },
+  "game": {
+    "chicago": "Chicago",
+    "newGame": "New game",
+    "endGame": "End game",
+    "round": "Round",
+    "score": "Score",
+    "buy": "Buy",
+    "pass": "Pass",
+    "declare": "Declare Chicago",
+    "undo": "Undo"
+  },
+  "rules": {
+    "kopstopp": "Köpstopp",
+    "chicago": "Chicago",
+    "royalStraightFlush": "Royal Straight Flush — instant win"
+  }
+}

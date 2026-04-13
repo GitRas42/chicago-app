@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@import "./styles/design-system.css";
 
 body {
   margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
 }
 
 #root {
