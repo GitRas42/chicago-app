@@ -1,0 +1,6 @@
+{
+  "name": "chicago-app",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
