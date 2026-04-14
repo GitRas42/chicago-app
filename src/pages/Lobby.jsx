@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '../i18n'
 import { useAuth } from '../features/auth/AuthContext'
@@ -8,6 +9,40 @@ export default function Lobby() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const games = listGames()
+
+  // Player setup state — null means no game being configured
+  const [setup, setSetup] = useState(null)          // game object | null
+  const [names, setNames] = useState(['', ''])       // 2–6 name inputs
+
+  function openSetup(game) {
+    setSetup(game)
+    setNames(['', ''])
+  }
+
+  function closeSetup() {
+    setSetup(null)
+    setNames(['', ''])
+  }
+
+  function addPlayer() {
+    if (names.length < 6) setNames((n) => [...n, ''])
+  }
+
+  function removeName(i) {
+    if (names.length > 2) setNames((n) => n.filter((_, idx) => idx !== i))
+  }
+
+  function updateName(i, val) {
+    setNames((n) => n.map((v, idx) => (idx === i ? val : v)))
+  }
+
+  function startGame() {
+    const players = names.map((n) => n.trim()).filter(Boolean)
+    if (players.length < 2) return
+    navigate(setup.route, { state: { players } })
+  }
+
+  const validPlayerCount = names.map((n) => n.trim()).filter(Boolean).length >= 2
 
   return (
     <div style={{ minHeight: '100svh', background: 'var(--color-bg)', fontFamily: 'var(--font-body)' }}>
@@ -64,21 +99,6 @@ export default function Lobby() {
             ))}
           </div>
 
-          {/* Profile */}
-          {user && (
-            <button
-              onClick={() => navigate('/profile')}
-              style={{
-                background: 'none',
-                border: '1px solid var(--color-gold-dark)',
-                borderRadius: 20, padding: '4px 12px',
-                color: 'var(--color-gold-light)', fontSize: 13,
-                cursor: 'pointer', fontWeight: 600,
-              }}
-            >
-              {t('profile')}
-            </button>
-          )}
         </div>
       </header>
 
@@ -90,7 +110,7 @@ export default function Lobby() {
               key={game.id}
               style={{
                 background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
+                border: `1px solid ${setup?.id === game.id ? 'var(--color-gold)' : 'var(--color-border)'}`,
                 borderRadius: 12,
                 boxShadow: 'var(--shadow-card)',
                 overflow: 'hidden',
@@ -118,19 +138,102 @@ export default function Lobby() {
                     {game.minPlayers}–{game.maxPlayers} {t('players').toLowerCase()}
                   </span>
                   <button
-                    onClick={() => navigate(game.route)}
+                    onClick={() => setup?.id === game.id ? closeSetup() : openSetup(game)}
                     style={{
-                      background: 'var(--color-burgundy)',
-                      color: 'var(--color-cream)',
-                      border: 'none', borderRadius: 8,
+                      background: setup?.id === game.id ? 'transparent' : 'var(--color-burgundy)',
+                      color: setup?.id === game.id ? 'var(--color-burgundy)' : 'var(--color-cream)',
+                      border: setup?.id === game.id ? '1px solid var(--color-burgundy)' : 'none',
+                      borderRadius: 8,
                       padding: '9px 22px', fontSize: 14, fontWeight: 700,
                       cursor: 'pointer', fontFamily: 'var(--font-display)',
                     }}
                   >
-                    {t('newGame')}
+                    {setup?.id === game.id ? 'Avbryt' : t('newGame')}
                   </button>
                 </div>
               </div>
+
+              {/* ── Player setup panel ─────────────────────────────────── */}
+              {setup?.id === game.id && (
+                <div style={{
+                  borderTop: '1px solid var(--color-border)',
+                  padding: '16px 20px',
+                  background: 'var(--color-bg)',
+                }}>
+                  <p style={{
+                    fontFamily: 'var(--font-display)', fontWeight: 700,
+                    fontSize: 15, color: 'var(--color-text)', margin: '0 0 12px',
+                  }}>
+                    Spelare
+                  </p>
+
+                  {names.map((name, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => updateName(i, e.target.value)}
+                        placeholder={`Spelare ${i + 1}`}
+                        autoFocus={i === 0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && validPlayerCount) startGame()
+                        }}
+                        style={{
+                          flex: 1, padding: '9px 12px', fontSize: 15,
+                          border: '1px solid var(--color-border)', borderRadius: 8,
+                          background: 'var(--color-surface)', color: 'var(--color-text)',
+                          outline: 'none', fontFamily: 'inherit',
+                        }}
+                      />
+                      {names.length > 2 && (
+                        <button
+                          onClick={() => removeName(i)}
+                          style={{
+                            padding: '0 12px', fontSize: 18, lineHeight: 1,
+                            border: '1px solid var(--color-border)', borderRadius: 8,
+                            background: 'transparent', color: 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Add player / start */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                    {names.length < 6 && (
+                      <button
+                        onClick={addPlayer}
+                        style={{
+                          flex: 1, padding: '9px', fontSize: 14, fontWeight: 600,
+                          border: '1px dashed var(--color-border)', borderRadius: 8,
+                          background: 'transparent', color: 'var(--color-text-muted)',
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        + Lägg till spelare
+                      </button>
+                    )}
+                    <button
+                      onClick={startGame}
+                      disabled={!validPlayerCount}
+                      style={{
+                        flex: 2, padding: '10px', fontSize: 15, fontWeight: 700,
+                        border: 'none', borderRadius: 8,
+                        fontFamily: 'var(--font-display)',
+                        background: validPlayerCount ? 'var(--color-burgundy)' : 'var(--color-border)',
+                        color: validPlayerCount ? 'var(--color-cream)' : 'var(--color-text-muted)',
+                        cursor: validPlayerCount ? 'pointer' : 'default',
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      Starta spel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

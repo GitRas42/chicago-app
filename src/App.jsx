@@ -5,16 +5,7 @@ import ProtectedRoute from './features/auth/ProtectedRoute'
 import Login from './features/auth/Login'
 import Signup from './features/auth/Signup'
 import Lobby from './pages/Lobby'
-
-function GameSession() {
-  return (
-    <main className="min-h-screen bg-felt flex items-center justify-center">
-      <h1 className="text-4xl text-gold" style={{ fontFamily: 'var(--font-display)' }}>
-        Chicago — Spel pågår
-      </h1>
-    </main>
-  )
-}
+import GameSession from './pages/GameSession'
 
 function Leaderboard() {
   return (
