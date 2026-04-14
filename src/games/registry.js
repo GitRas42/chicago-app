@@ -19,5 +19,17 @@ export function getGame(id) {
 }
 
 export function listGames() {
-  return Object.keys(registry)
+  return Object.values(registry)
 }
+
+// ── Registered games ────────────────────────────────────────────────────────
+
+registerGame('chicago', {
+  id: 'chicago',
+  nameKey: 'chicago',
+  descriptionKey: 'rulesIntro',
+  minPlayers: 2,
+  maxPlayers: 8,
+  suit: '♠',
+  route: '/game/chicago',
+})
