@@ -4,15 +4,42 @@ import { useTranslation } from '../i18n'
 import { useAuth } from '../features/auth/AuthContext'
 import { listGames } from '../games/registry'
 
+// ── localStorage helpers ──────────────────────────────────────────────────────
+
+const LS_KEY = 'chicago_player_names'
+
+function loadSuggestions() {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function persistNames(names) {
+  const existing = loadSuggestions()
+  const merged = [
+    ...names,
+    ...existing.filter((s) => !names.includes(s)),
+  ].slice(0, 20)
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(merged))
+  } catch {}
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function Lobby() {
   const { t, lang, setLang } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const games = listGames()
 
-  // Player setup state — null means no game being configured
-  const [setup, setSetup] = useState(null)          // game object | null
-  const [names, setNames] = useState(['', ''])       // 2–6 name inputs
+  const [setup, setSetup] = useState(null)
+  const [names, setNames] = useState(['', ''])
+  const [focusedIdx, setFocusedIdx] = useState(null)
+  const [savedNames] = useState(loadSuggestions)
 
   function openSetup(game) {
     setSetup(game)
@@ -39,7 +66,19 @@ export default function Lobby() {
   function startGame() {
     const players = names.map((n) => n.trim()).filter(Boolean)
     if (players.length < 2) return
+    persistNames(players)
     navigate(setup.route, { state: { players } })
+  }
+
+  function getSuggestions(i) {
+    const val = names[i].toLowerCase()
+    const others = new Set(
+      names.filter((_, idx) => idx !== i).map((n) => n.trim().toLowerCase())
+    )
+    return savedNames
+      .filter((s) => !others.has(s.toLowerCase()))
+      .filter((s) => val === '' || s.toLowerCase().includes(val))
+      .slice(0, 6)
   }
 
   const validPlayerCount = names.map((n) => n.trim()).filter(Boolean).length >= 2
@@ -62,8 +101,6 @@ export default function Lobby() {
         </span>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-
-          {/* Reload */}
           <button
             onClick={() => window.location.reload()}
             title="Reload"
@@ -77,11 +114,7 @@ export default function Lobby() {
             ↺
           </button>
 
-          {/* Language toggle */}
-          <div style={{
-            display: 'flex', borderRadius: 6, overflow: 'hidden',
-            border: '1px solid var(--color-gold-dark)',
-          }}>
+          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--color-gold-dark)' }}>
             {['sv', 'en'].map((l) => (
               <button
                 key={l}
@@ -98,7 +131,6 @@ export default function Lobby() {
               </button>
             ))}
           </div>
-
         </div>
       </header>
 
@@ -113,10 +145,10 @@ export default function Lobby() {
                 border: `1px solid ${setup?.id === game.id ? 'var(--color-gold)' : 'var(--color-border)'}`,
                 borderRadius: 12,
                 boxShadow: 'var(--shadow-card)',
-                overflow: 'hidden',
+                overflow: 'visible',
               }}
             >
-              <div style={{ height: 4, background: 'var(--color-burgundy)' }} />
+              <div style={{ height: 4, background: 'var(--color-burgundy)', borderRadius: '12px 12px 0 0' }} />
               <div style={{ padding: '16px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                   <span style={{ fontSize: 30, lineHeight: 1 }}>{game.suit}</span>
@@ -159,6 +191,7 @@ export default function Lobby() {
                   borderTop: '1px solid var(--color-border)',
                   padding: '16px 20px',
                   background: 'var(--color-bg)',
+                  borderRadius: '0 0 12px 12px',
                 }}>
                   <p style={{
                     fontFamily: 'var(--font-display)', fontWeight: 700,
@@ -167,41 +200,83 @@ export default function Lobby() {
                     Spelare
                   </p>
 
-                  {names.map((name, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => updateName(i, e.target.value)}
-                        placeholder={`Spelare ${i + 1}`}
-                        autoFocus={i === 0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && validPlayerCount) startGame()
-                        }}
-                        style={{
-                          flex: 1, padding: '9px 12px', fontSize: 15,
-                          border: '1px solid var(--color-border)', borderRadius: 8,
-                          background: 'var(--color-surface)', color: 'var(--color-text)',
-                          outline: 'none', fontFamily: 'inherit',
-                        }}
-                      />
-                      {names.length > 2 && (
-                        <button
-                          onClick={() => removeName(i)}
-                          style={{
-                            padding: '0 12px', fontSize: 18, lineHeight: 1,
-                            border: '1px solid var(--color-border)', borderRadius: 8,
-                            background: 'transparent', color: 'var(--color-text-muted)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {names.map((name, i) => {
+                    const suggs = getSuggestions(i)
+                    const showDropdown = focusedIdx === i && suggs.length > 0
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <div style={{ flex: 1, position: 'relative' }}>
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => updateName(i, e.target.value)}
+                            placeholder={`Spelare ${i + 1}`}
+                            autoFocus={i === 0}
+                            onFocus={() => setFocusedIdx(i)}
+                            onBlur={() => setTimeout(() => setFocusedIdx(null), 150)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && validPlayerCount) startGame()
+                            }}
+                            style={{
+                              width: '100%', boxSizing: 'border-box',
+                              padding: '9px 12px', fontSize: 15,
+                              border: '1px solid var(--color-border)', borderRadius: 8,
+                              background: 'var(--color-surface)', color: 'var(--color-text)',
+                              outline: 'none', fontFamily: 'inherit',
+                            }}
+                          />
+                          {showDropdown && (
+                            <div style={{
+                              position: 'absolute', top: '100%', left: 0, right: 0,
+                              background: 'var(--color-surface)',
+                              border: '1px solid var(--color-border)',
+                              borderTop: 'none', borderRadius: '0 0 8px 8px',
+                              zIndex: 50, overflow: 'hidden',
+                            }}>
+                              {suggs.map((s) => (
+                                <button
+                                  key={s}
+                                  onMouseDown={() => {
+                                    updateName(i, s)
+                                    setFocusedIdx(null)
+                                  }}
+                                  style={{
+                                    display: 'block', width: '100%', textAlign: 'left',
+                                    padding: '9px 12px', fontSize: 14,
+                                    border: 'none', borderBottom: '1px solid var(--color-border)',
+                                    background: 'transparent', color: 'var(--color-text)',
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(201,151,44,0.1)'
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent'
+                                  }}
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {names.length > 2 && (
+                          <button
+                            onClick={() => removeName(i)}
+                            style={{
+                              padding: '0 12px', fontSize: 18, lineHeight: 1,
+                              border: '1px solid var(--color-border)', borderRadius: 8,
+                              background: 'transparent', color: 'var(--color-text-muted)',
+                              cursor: 'pointer', flexShrink: 0,
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
 
-                  {/* Add player / start */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                     {names.length < 6 && (
                       <button
