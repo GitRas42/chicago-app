@@ -68,7 +68,7 @@ export default function GameSession() {
   const [round, setRound] = useState(1)
   // phase: 'input' | 'splash' | 'end'
   const [phase, setPhase] = useState('input')
-  const [inputs, setInputs] = useState({})      // playerId → number (hand points)
+  const [inputs, setInputs] = useState({})      // playerId → hand object { label, points }
   const [declared, setDeclared] = useState({})  // playerId → bool (Chicago this round)
   const [kopstopp, setKopstopp] = useState(false)
   const [snapshot, setSnapshot] = useState(null)  // one-step undo
@@ -77,6 +77,7 @@ export default function GameSession() {
   const [winner, setWinner] = useState(null)       // player object or null
   const [pickerOpen, setPickerOpen] = useState(null)   // playerId | null
   const [rsfConfirm, setRsfConfirm] = useState(null)   // player object | null
+  const [tieBreaker, setTieBreaker] = useState(null)   // { tiedPlayers, winningPts, handSelected } | null
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export default function GameSession() {
   }
 
   function selectHand(playerId, hand) {
-    setInputs((prev) => ({ ...prev, [playerId]: hand.points }))
+    setInputs((prev) => ({ ...prev, [playerId]: hand }))
     setPickerOpen(null)
   }
 
@@ -116,7 +117,10 @@ export default function GameSession() {
 
   // ── Submit round ──────────────────────────────────────────────────────────
 
-  function submitRound() {
+  // handSelected: playerId → hand object (or null when köpstopp)
+  // roundWinner:  player object who won the hand battle (or null = no winner)
+  // winningPts:   point value of the winning hand
+  function applyRound(handSelected, roundWinner, winningPts) {
     setSnapshot({
       players: players.map((p) => ({ ...p })),
       round,
@@ -124,28 +128,23 @@ export default function GameSession() {
       inputs: { ...inputs },
     })
 
-    // After köpstopp all round scores are 0
+    // Only the round winner scores; everyone else gets 0
     const roundScores = {}
     players.forEach((p) => {
-      roundScores[p.id] = kopstopp ? 0 : (inputs[p.id] ?? 0)
+      roundScores[p.id] = roundWinner?.id === p.id ? winningPts : 0
     })
 
-    const maxRS = Math.max(...Object.values(roundScores))
-    const wonChicago = (id) => roundScores[id] === maxRS
+    // CHI: did the declaring player have the best hand?
+    const chiId = Number(Object.keys(declared).find((id) => declared[id]))
+    const chicagoInfo = {}
+    if (declared[chiId]) {
+      chicagoInfo[chiId] = roundWinner?.id === chiId ? 'won' : 'lost'
+    }
 
     let newPlayers = players.map((p) => {
       let delta = roundScores[p.id]
-      if (declared[p.id]) {
-        delta += wonChicago(p.id) ? 15 : -15
-      }
+      if (declared[p.id]) delta += chicagoInfo[p.id] === 'won' ? 15 : -15
       return { ...p, score: p.score + delta }
-    })
-
-    const chicagoInfo = {}
-    players.forEach((p) => {
-      if (declared[p.id]) {
-        chicagoInfo[p.id] = wonChicago(p.id) ? 'won' : 'lost'
-      }
     })
 
     let newKopstopp = kopstopp
@@ -161,36 +160,60 @@ export default function GameSession() {
       }
     }
 
-    if (!kopstopp && players.some((p) => roundScores[p.id] === 0)) {
-      showToast('Inga poäng?')
-    }
+    if (!roundWinner || winningPts === 0) showToast('Inga poäng?')
 
     const isGameOver = round >= buyRounds || newKopstopp
-
-    let roundWinner = null
+    let gameWinner = null
     if (isGameOver) {
       const maxTotal = Math.max(...newPlayers.map((p) => p.score))
       const leaders = newPlayers.filter((p) => p.score === maxTotal)
-      roundWinner = leaders.length === 1 ? leaders[0] : null
+      gameWinner = leaders.length === 1 ? leaders[0] : null
     }
 
     setPlayers(newPlayers)
     setKopstopp(newKopstopp)
     setInputs({})
     setDeclared({})
-
     setSplash({
       roundNum: round,
       roundScores,
+      handSelected,
+      roundWinner,
       chicagoInfo,
       kopstoppName,
       updatedPlayers: newPlayers,
       gameOver: isGameOver,
-      winner: roundWinner,
+      winner: gameWinner,
+    })
+    if (isGameOver) setWinner(gameWinner)
+    setPhase('splash')
+  }
+
+  function submitRound() {
+    // Snapshot each player's hand (null during köpstopp)
+    const handSelected = {}
+    players.forEach((p) => {
+      handSelected[p.id] = kopstopp ? null : (inputs[p.id] ?? null)
     })
 
-    if (isGameOver) setWinner(roundWinner)
-    setPhase('splash')
+    const pts = (h) => h?.points ?? 0
+    const maxPts = Math.max(...players.map((p) => pts(handSelected[p.id])))
+    const topPlayers = players.filter((p) => pts(handSelected[p.id]) === maxPts)
+
+    // Tie with actual points → let user break the tie
+    if (topPlayers.length > 1 && maxPts > 0) {
+      setTieBreaker({ tiedPlayers: topPlayers, winningPts: maxPts, handSelected })
+      return
+    }
+
+    const roundWinner = topPlayers.length === 1 ? topPlayers[0] : null
+    applyRound(handSelected, roundWinner, maxPts)
+  }
+
+  function resolveTie(winner) {
+    const { handSelected, winningPts } = tieBreaker
+    setTieBreaker(null)
+    applyRound(handSelected, winner, winningPts)
   }
 
   // ── Splash → next ─────────────────────────────────────────────────────────
@@ -216,6 +239,7 @@ export default function GameSession() {
     setSnapshot(null)
     setWinner(null)
     setPickerOpen(null)
+    setTieBreaker(null)
     setPhase('input')
   }
 
@@ -230,7 +254,6 @@ export default function GameSession() {
   }
 
   const sorted = [...players].sort((a, b) => b.score - a.score)
-  const allFilled = kopstopp || players.every((p) => inputs[p.id] !== undefined)
 
   return (
     <div style={{ minHeight: '100svh', background: 'var(--color-bg)', fontFamily: 'var(--font-body)' }}>
@@ -319,6 +342,52 @@ export default function GameSession() {
         </div>
       )}
 
+      {/* ── Tiebreaker modal ────────────────────────────────────────────── */}
+      {tieBreaker && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 30,
+          background: 'rgba(0,0,0,0.72)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-gold)',
+            borderRadius: 14, padding: '28px 24px',
+            maxWidth: 340, width: '100%', textAlign: 'center',
+          }}>
+            <p style={{
+              fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700,
+              color: 'var(--color-gold)', margin: '0 0 6px',
+            }}>
+              Oavgjort
+            </p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: '0 0 20px' }}>
+              Flera spelare hade {tieBreaker.handSelected[tieBreaker.tiedPlayers[0]?.id]?.label ?? 'samma hand'} — vem vinner?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tieBreaker.tiedPlayers.map((p) => (
+                <button key={p.id} onClick={() => resolveTie(p)} style={{
+                  padding: 12, fontSize: 15, fontWeight: 700,
+                  border: '1px solid var(--color-gold)', borderRadius: 8,
+                  background: 'transparent', color: 'var(--color-gold)',
+                  cursor: 'pointer', fontFamily: 'var(--font-display)',
+                }}>
+                  {p.name}
+                </button>
+              ))}
+              <button onClick={() => resolveTie(null)} style={{
+                padding: 12, fontSize: 14, fontWeight: 600, marginTop: 4,
+                border: '1px solid var(--color-border)', borderRadius: 8,
+                background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer',
+              }}>
+                Ingen vinner — exakt lika
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Player rows ──────────────────────────────────────────────────── */}
       <div style={{ padding: '16px 16px 0' }}>
         {sorted.map((p, rank) => (
@@ -387,16 +456,16 @@ export default function GameSession() {
                 title={kopstopp ? 'Köpstopp' : 'Välj hand'}
                 style={{
                   width: 62, padding: '8px 6px', textAlign: 'center',
-                  border: `1px solid ${inputs[p.id] !== undefined ? 'var(--color-gold)' : 'var(--color-border)'}`,
+                  border: `1px solid ${inputs[p.id] ? 'var(--color-gold)' : 'var(--color-border)'}`,
                   borderRadius: 8, fontSize: 15, fontWeight: 700,
-                  background: inputs[p.id] !== undefined ? 'rgba(201,151,44,0.12)' : 'var(--color-bg)',
-                  color: inputs[p.id] !== undefined ? 'var(--color-gold)' : 'var(--color-text-muted)',
+                  background: inputs[p.id] ? 'rgba(201,151,44,0.12)' : 'var(--color-bg)',
+                  color: inputs[p.id] ? 'var(--color-gold)' : 'var(--color-text-muted)',
                   cursor: kopstopp ? 'default' : 'pointer',
                   flexShrink: 0, position: 'relative', zIndex: pickerOpen === p.id ? 12 : 1,
                   opacity: kopstopp ? 0.4 : 1,
                 }}
               >
-                {inputs[p.id] !== undefined ? `+${inputs[p.id]}` : '+p'}
+                {inputs[p.id] ? `+${inputs[p.id].points}` : '+p'}
               </button>
             </div>
 
@@ -419,9 +488,9 @@ export default function GameSession() {
                     onClick={() => selectHand(p.id, hand)}
                     style={{
                       padding: '8px 10px', fontSize: 12, fontWeight: 600,
-                      border: `1px solid ${inputs[p.id] === hand.points ? 'var(--color-gold)' : 'var(--color-border)'}`,
+                      border: `1px solid ${inputs[p.id]?.label === hand.label ? 'var(--color-gold)' : 'var(--color-border)'}`,
                       borderRadius: 7,
-                      background: inputs[p.id] === hand.points ? 'rgba(201,151,44,0.15)' : 'var(--color-bg)',
+                      background: inputs[p.id]?.label === hand.label ? 'rgba(201,151,44,0.15)' : 'var(--color-bg)',
                       color: 'var(--color-text)', cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       gap: 6,
@@ -455,7 +524,7 @@ export default function GameSession() {
 
       {/* ── Submit ───────────────────────────────────────────────────────── */}
       <div style={{ padding: '12px 16px' }}>
-        <button onClick={submitRound} disabled={!allFilled} style={primaryBtn(allFilled)}>
+        <button onClick={submitRound} style={primaryBtn(true)}>
           Bekräfta giv {round}
         </button>
       </div>
@@ -478,10 +547,11 @@ export default function GameSession() {
 // ── Splash screen ─────────────────────────────────────────────────────────────
 
 function SplashScreen({ splash, onDone }) {
-  const { roundNum, roundScores, chicagoInfo, kopstoppName, updatedPlayers, gameOver, winner } =
+  const { roundNum, roundScores, handSelected, roundWinner, chicagoInfo, kopstoppName, updatedPlayers, gameOver, winner } =
     splash
 
-  const sorted = [...updatedPlayers].sort((a, b) => roundScores[b.id] - roundScores[a.id])
+  // Winner row first, then others alphabetically by name
+  const sorted = [...updatedPlayers].sort((a, b) => (roundScores[b.id] ?? 0) - (roundScores[a.id] ?? 0))
 
   return (
     <div style={{
@@ -509,17 +579,25 @@ function SplashScreen({ splash, onDone }) {
       <div style={{ width: '100%', maxWidth: 380, margin: '16px 0' }}>
         {sorted.map((p) => {
           const chi = chicagoInfo[p.id]
+          const isWinner = roundWinner?.id === p.id
+          const handLabel = handSelected?.[p.id]?.label
           return (
             <div key={p.id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '11px 16px', marginBottom: 8,
-              background: 'rgba(255,249,240,0.08)', borderRadius: 8,
-              border: '1px solid rgba(201,151,44,0.25)',
+              background: isWinner ? 'rgba(201,151,44,0.12)' : 'rgba(255,249,240,0.08)',
+              borderRadius: 8,
+              border: `1px solid ${isWinner ? 'rgba(201,151,44,0.5)' : 'rgba(201,151,44,0.25)'}`,
             }}>
               <div>
                 <span style={{ color: 'var(--color-cream)', fontWeight: 600, fontSize: 15 }}>
                   {p.name}
                 </span>
+                {handLabel && (
+                  <span style={{ fontSize: 11, marginLeft: 6, color: 'rgba(255,249,240,0.45)' }}>
+                    {handLabel}
+                  </span>
+                )}
                 {chi && (
                   <span style={{
                     fontSize: 12, marginLeft: 8, fontWeight: 700,
@@ -530,9 +608,11 @@ function SplashScreen({ splash, onDone }) {
                 )}
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ color: 'var(--color-gold)', fontWeight: 700, fontSize: 18 }}>
-                  +{roundScores[p.id]}
-                </span>
+                {isWinner && (
+                  <span style={{ color: 'var(--color-gold)', fontWeight: 700, fontSize: 18 }}>
+                    +{roundScores[p.id]}
+                  </span>
+                )}
                 <span style={{ color: 'rgba(255,249,240,0.7)', fontSize: 13, marginLeft: 8 }}>
                   → {p.score}p
                 </span>
